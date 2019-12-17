@@ -1,0 +1,41 @@
+version: '3'
+services:
+  web:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - app
+    volumes:
+      - ./web/conf/default.conf:/etc/nginx/conf.d/default.conf
+  app:
+    #https://hub.docker.com/_/php/
+    #imageを指定してphpのコンテナを構築するのではなく、Dockerfileを利用した構築方法に変更
+    #image: php:7.4.0-fpm
+    build: ./php
+    volumes:
+      - ./php/src:/var/www/
+  mysql:
+    #https://hub.docker.com/_/mysql
+    #image: mysql:8.0.18 <-- latestだとこのバージョン（2019/12/13時点）
+    image: mysql:latest
+    environment:
+      #イメージの起動時に作成するデータベースの名前
+      MYSQL_DATABASE: yudb
+      #このユーザはMYSQL_DATABASE変数で指定されたデータベースに対してスーパーユーザとしての権限(GRANT ALL)を保持する
+      MYSQL_USER: mysqluser
+      #MYSQL_USERのパスワード
+      MYSQL_PASSWORD: mysqluser00
+      # MySQLにおけるスーパーユーザであるrootアカウントに設定するためのパスワード
+      MYSQL_ROOT_PASSWORD: mysqluser000
+    ports:
+      - "3306:3306"
+    volumes:
+      # /var/lib/mysqlをvolumesで追加する意図として、MySQLのデータベースに加えた変更を永続化するため。
+      # 例えば、「yudb」という名前でデータベースを作成し、mysqluserを作成し、DDLを流してテーブルを作成し、
+      # LOAD DATA LOCAL INFILEによってCSVファイルで初期データをロードした場合、/var/lib/mysqlをvolumesに指定しないと、
+      # MySQLのコンテナを起動するたびに初期化処理が走るようになります。
+      #- ./mysql/var_lib_mysql:/var/lib/mysql
+      # /docker-entrypoint-initdb.d/配下は、Dockerコンテナが初回起動（初期化）される際に１度だけ実行されるスクリプトなどを配置
+      # *.sh / *.sql / *.sql.gzの拡張子のファイルはファイル名の昇順に実行される。
+      - ./mysql/init:/docker-entrypoint-initdb.d
